@@ -67,13 +67,29 @@ interface UserSnapshot {
 
 async function buildUserSnapshot(userId: string): Promise<UserSnapshot> {
     try {
-        const [userInfo, userSettings, userPermissions] = await Promise.all(
-            [
-                getUserInfo(userId),
-                getUserSettings(userId),
-                getUserPermissions(userId)
-            ]
-        );
+        // заведем дефольные значения для случаев, если какая либо из функций завершится с ошибкой
+        const defaultUserInfo = { id: userId, name: 'Unknown', email: 'unknown@example.com' };
+        const defaultUserSettings = { theme: 'light', language: 'en' };
+        const defaultUserPermissions: string[] = [];
+
+        let userInfo = defaultUserInfo;
+        let userSettings = defaultUserSettings;
+        let userPermissions = defaultUserPermissions;
+
+        const promises = [
+            getUserInfo(userId)
+                .then(data => { userInfo = data; return true; })
+                .catch(error => { console.log(`Не удалось получить информацию о пользователе ${userId}: ${error.message}`); return false; }),
+            getUserSettings(userId)
+                .then(data => { userSettings = data; return true; })
+                .catch(error => { console.log(`Не удалось получить настройки пользователя ${userId}: ${error.message}`); return false; }),
+            getUserPermissions(userId)
+                .then(data => { userPermissions = data; return true; })
+                .catch(error => { console.log(`Не удалось получить права пользователя ${userId}: ${error.message}`); return false; })
+        ];
+
+        await Promise.allSettled(promises);
+
         return {
            id: userId,
            name: userInfo.name,
